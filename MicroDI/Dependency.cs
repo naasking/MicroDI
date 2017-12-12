@@ -34,7 +34,8 @@ namespace MicroDI
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
-                var i = Interlocked.Increment(ref instances) - 1;
+                var i = Service<TService>.Index = Service<TInstance>.Index =
+                    Interlocked.Increment(ref instances) - 1;
                 Service<TService>.Resolve =
                     deps => (TService)(deps.scoped[i] ?? deps.Init(new TInstance(), i));
             }
@@ -52,7 +53,8 @@ namespace MicroDI
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
-                var i = Interlocked.Increment(ref instances);
+                var i = Service<TService>.Index = Service<TInstance>.Index =
+                    Interlocked.Increment(ref instances);
                 Service<TService>.Resolve =
                     deps => (TService)(deps.scoped[i] ?? deps.Init(create(), i));
             }
@@ -83,7 +85,7 @@ namespace MicroDI
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
-                //FIXME: we should optionally check for a circular dependency on TService in TInstance
+                // check for a circular dependency on TService in TInstance
                 if (debug && IsCircular<TInstance, TService>(new HashSet<Type>()))
                     throw new ArgumentException("Type " + typeof(TInstance).Name + " has a circular dependency on " + typeof(TService).Name + " and so cannot have transient lifetime.");
                 Service<TService>.Resolve = deps => deps.Init(new TInstance());
@@ -102,7 +104,7 @@ namespace MicroDI
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
-                //FIXME: we should optionally check for a circular dependency on TService in TInstance
+                // check for a circular dependency on TService in TInstance
                 if (debug && IsCircular<TInstance, TService>(new HashSet<Type>()))
                     throw new ArgumentException("Type " + typeof(TInstance).Name + " has a circular dependency on " + typeof(TService).Name + " and so cannot have transient lifetime.");
                 Service<TService>.Resolve = deps => deps.Init(create());
@@ -178,14 +180,31 @@ namespace MicroDI
         }
         #endregion
 
+#if DEBUG
         /// <summary>
         /// Resolve a service instance.
         /// </summary>
         /// <typeparam name="TService">The service type to resolve.</typeparam>
         /// <returns>An instance of the service.</returns>
-        public TService Resolve<TService>()
+        public TService Scoped<TService>(TService instance)
         {
-            return Service<TService>.Resolve(this);
+            //FIXME: manually inject a scoped instance?
+            if (scoped[Service<TService>.Index] != null && (TService)scoped[Service<TService>.Index] != instance)
+                throw new ArgumentException("An instance is already registered.");
+            scoped[Service<TService>.Index] = instance;
+            return instance;
+        }
+#endif
+
+        /// <summary>
+        /// Resolve a service instance.
+        /// </summary>
+        /// <typeparam name="TService">The service type to resolve.</typeparam>
+        /// <returns>An instance of the service.</returns>
+        public TService Scoped<TService>()
+            where TService:new()
+        {
+            return Init(new TService());
         }
 
         /// <summary>
