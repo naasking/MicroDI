@@ -30,10 +30,13 @@ namespace Injector
         public static void Scoped<TService, TInstance>()
             where TInstance : TService, new()
         {
-            RequiresEmptyRegistration<TService>();
-            var i = instances++;
-            Service<TService>.Resolve =
-                deps => (TService)(deps.scoped[i] ?? (deps.scoped[i] = deps.Fresh<TInstance>()));
+            lock (typeof(Service<TService>))
+            {
+                RequiresEmptyRegistration<TService>();
+                var i = Interlocked.Increment(ref instances);
+                Service<TService>.Resolve =
+                    deps => (TService)(deps.scoped[i] ?? deps.Fresh<TInstance>(i));
+            }
         }
 
         /// <summary>
@@ -43,8 +46,11 @@ namespace Injector
         /// <param name="instance"></param>
         public static void Singleton<TService>(TService instance)
         {
-            RequiresEmptyRegistration<TService>();
-            Service<TService>.Resolve = deps => instance;
+            lock (typeof(Service<TService>))
+            {
+                RequiresEmptyRegistration<TService>();
+                Service<TService>.Resolve = deps => instance;
+            }
         }
 
         /// <summary>
@@ -55,8 +61,20 @@ namespace Injector
         public static void Transient<TService, TInstance>()
             where TInstance : TService, new()
         {
-            RequiresEmptyRegistration<TService>();
-            Service<TService>.Resolve = deps => deps.Fresh<TInstance>();
+            lock (typeof(Service<TService>))
+            {
+                RequiresEmptyRegistration<TService>();
+                Service<TService>.Resolve = deps => deps.Fresh<TInstance>();
+            }
+        }
+
+        /// <summary>
+        /// Clear any previous registrations.
+        /// </summary>
+        /// <typeparam name="TService"></typeparam>
+        public static void Clear<TService>()
+        {
+            Service<TService>.Resolve = null;
         }
         #endregion
 
@@ -64,10 +82,13 @@ namespace Injector
         /// <summary>
         /// Create a fresh instance of a type.
         /// </summary>
-        T Fresh<T>()
+        T Fresh<T>(int scopeIndex = -1)
             where T : new()
         {
             var x = new T();
+            // register scoped instance before init in case of circular dependencies
+            if (scopeIndex >= 0)
+                scoped[scopeIndex] = x;
             Instance<T>.Init(this, x);
             if (x is IDisposable)
                 disposables.Add(x as IDisposable);
@@ -113,9 +134,8 @@ namespace Injector
                         errors.Add(e);
                     }
                 }
-                var raise = OnError;
-                if (errors.Count > 0 && raise != null)
-                    raise(errors);
+                if (errors.Count > 0)
+                    OnError?.Invoke(errors);
             }
         }
 
