@@ -43,7 +43,7 @@ the service it satisfies. Consider:
 		public IService Service { get; private set; }
 	}
 	...
-	Dependey.Transient<IService, Foo>();
+	Dependency.Transient<IService, Foo>();
 
 When resolving IService, MicroDI creates an instance of Foo
 and tries to initialize it. While initializing the Foo.Service
