@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 
-namespace Injector
+namespace MicroDI
 {
     /// <summary>
     /// The dependency manager.
@@ -114,23 +114,23 @@ namespace Injector
 
         #region Private methods
         /// <summary>
-        /// Create a fresh instance of a type.
+        /// Initialize a fresh instance of a type.
         /// </summary>
         T Init<T>(T x, int scopeIndex)
         {
             // register scoped instance before init in case of circular dependencies
-            if (scopeIndex >= 0)
-                scoped[scopeIndex] = x;
+            scoped[scopeIndex] = x;
             return Init(x);
         }
         /// <summary>
-        /// Create a fresh instance of a type.
+        /// Initialize a fresh instance of a type.
         /// </summary>
         T Init<T>(T x)
         {
             Instance<T>.Init(this, x);
-            if (x is IDisposable)
-                disposables.Add(x as IDisposable);
+            var y = x as IDisposable;
+            if (y != null)
+                disposables.Add(y);
             return x;
         }
         /// <summary>

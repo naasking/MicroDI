@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Injector
+namespace MicroDI
 {
     static class Service<T>
     {
