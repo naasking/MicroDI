@@ -13,5 +13,7 @@ namespace MicroDI.Tests
         {
             get { return 3; }
         }
+
+        public string Foo { get; set; }
     }
 }

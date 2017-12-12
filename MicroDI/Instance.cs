@@ -40,7 +40,16 @@ namespace MicroDI
 
         static Action<Dependency, T> Set<TProperty>(Action<T, TProperty> setter)
         {
-            return (deps, obj) => setter(obj, deps.Resolve<TProperty>());
+            //FIXME: if no resolver available, should skip initialization or raise error?
+            //return (deps, obj) => setter(obj, deps.Resolve<TProperty>());
+            //return (deps, obj) => setter(obj, Service<TProperty>.Resolve?.Invoke());
+            return (deps, obj) =>
+            {
+                //setter(obj, deps.Resolve<TProperty>();
+                var resolve = Service<TProperty>.Resolve;
+                if (resolve != null)
+                    setter(obj, resolve(deps));
+            };
         }
     }
 }
