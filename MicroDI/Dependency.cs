@@ -86,7 +86,7 @@ namespace MicroDI
             {
                 RequiresEmptyRegistration<TService>();
                 // check for a circular dependency on TService in TInstance
-                if (debug && IsCircular<TInstance, TService>(new HashSet<Type>()))
+                if (debug && IsCircular<TInstance, TService>(new HashSet<Type>(new[] { typeof(TInstance) })))
                     throw new ArgumentException("Type " + typeof(TInstance).Name + " has a circular dependency on " + typeof(TService).Name + " and so cannot have transient lifetime.");
                 Service<TService>.Resolve = deps => deps.Init(new TInstance());
             }
@@ -105,7 +105,7 @@ namespace MicroDI
             {
                 RequiresEmptyRegistration<TService>();
                 // check for a circular dependency on TService in TInstance
-                if (debug && IsCircular<TInstance, TService>(new HashSet<Type>()))
+                if (debug && IsCircular<TInstance, TService>(new HashSet<Type>(new[] { typeof(TInstance) })))
                     throw new ArgumentException("Type " + typeof(TInstance).Name + " has a circular dependency on " + typeof(TService).Name + " and so cannot have transient lifetime.");
                 Service<TService>.Resolve = deps => deps.Init(create());
             }
@@ -161,15 +161,13 @@ namespace MicroDI
         static bool IsCircular<TInstance, TService>(HashSet<Type> visited)
         {
             var type = typeof(TInstance);
-            if (!visited.Add(type))
-                return false;
             var stype = typeof(TService);
             foreach (var x in type.GetRuntimeProperties())
             {
                 if (x.PropertyType == stype || x.PropertyType == type)
                     return true;
-                else if (visited.Add(x.PropertyType) && IsCircular(x.PropertyType, stype, visited))
-                    return true;
+                else if (visited.Add(x.PropertyType))
+                    return IsCircular(x.PropertyType, stype, visited);
             }
             return false;
         }
