@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Reflection;
 
 namespace MicroDI
 {
@@ -76,12 +77,15 @@ namespace MicroDI
         /// </summary>
         /// <typeparam name="TInstance">The type of the service instance.</typeparam>
         /// <typeparam name="TService">The service type.</typeparam>
-        public static void Transient<TService, TInstance>()
+        public static void Transient<TService, TInstance>(bool debug = false)
             where TInstance : TService, new()
         {
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
+                //FIXME: we should optionally check for a circular dependency on TService in TInstance
+                if (debug && IsCircular<TInstance, TService>(new HashSet<Type>()))
+                    throw new ArgumentException("Type " + typeof(TInstance).Name + " has a circular dependency on " + typeof(TService).Name + " and so cannot have transient lifetime.");
                 Service<TService>.Resolve = deps => deps.Init(new TInstance());
             }
         }
@@ -92,12 +96,15 @@ namespace MicroDI
         /// <param name="create">The custom constructor to create new instances.</param>
         /// <typeparam name="TInstance">The type of the service instance.</typeparam>
         /// <typeparam name="TService">The service type.</typeparam>
-        public static void Transient<TService, TInstance>(Func<TInstance> create)
+        public static void Transient<TService, TInstance>(Func<TInstance> create, bool debug = false)
             where TInstance : TService
         {
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
+                //FIXME: we should optionally check for a circular dependency on TService in TInstance
+                if (debug && IsCircular<TInstance, TService>(new HashSet<Type>()))
+                    throw new ArgumentException("Type " + typeof(TInstance).Name + " has a circular dependency on " + typeof(TService).Name + " and so cannot have transient lifetime.");
                 Service<TService>.Resolve = deps => deps.Init(create());
             }
         }
@@ -140,6 +147,34 @@ namespace MicroDI
         {
             if (Service<TReturn>.Resolve != null)
                 throw new InvalidOperationException("Type " + typeof(TReturn).Name + " is already registered.");
+        }
+
+        static MethodInfo isCircular = new Func<HashSet<Type>, bool>(IsCircular<int, int>)
+            .GetMethodInfo()
+            .GetGenericMethodDefinition();
+        
+        /// <summary>
+        /// Check whether any properties recursively reference T.
+        /// </summary>
+        static bool IsCircular<TInstance, TService>(HashSet<Type> visited)
+        {
+            var type = typeof(TInstance);
+            if (!visited.Add(type))
+                return false;
+            var stype = typeof(TService);
+            foreach (var x in type.GetRuntimeProperties())
+            {
+                if (x.PropertyType == stype || x.PropertyType == type)
+                    return true;
+                else if (visited.Add(x.PropertyType) && IsCircular(x.PropertyType, stype, visited))
+                    return true;
+            }
+            return false;
+        }
+        static bool IsCircular(Type instance, Type service, HashSet<Type> visited)
+        {
+            return (bool)isCircular.MakeGenericMethod(instance, service)
+                                   .Invoke(null, new[] { visited });
         }
         #endregion
 
