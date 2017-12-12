@@ -10,7 +10,6 @@ namespace Injector
     /// </summary>
     /// <typeparam name="T">The type to be initialized.</typeparam>
     static class Instance<T>
-        where T : new()
     {
         /// <summary>
         /// Initialize an instance via property setters.

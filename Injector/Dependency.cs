@@ -25,8 +25,8 @@ namespace Injector
         /// <summary>
         /// Define a scoped service registration.
         /// </summary>
-        /// <typeparam name="TInstance"></typeparam>
-        /// <typeparam name="TService"></typeparam>
+        /// <typeparam name="TInstance">The type of the service instance.</typeparam>
+        /// <typeparam name="TService">The service type.</typeparam>
         public static void Scoped<TService, TInstance>()
             where TInstance : TService, new()
         {
@@ -35,15 +35,33 @@ namespace Injector
                 RequiresEmptyRegistration<TService>();
                 var i = Interlocked.Increment(ref instances);
                 Service<TService>.Resolve =
-                    deps => (TService)(deps.scoped[i] ?? deps.Fresh<TInstance>(i));
+                    deps => (TService)(deps.scoped[i] ?? deps.Init(new TInstance(), i));
+            }
+        }
+
+        /// <summary>
+        /// Define a scoped service registration.
+        /// </summary>
+        /// <param name="create">The default constructor to use.</param>
+        /// <typeparam name="TInstance">The type of the service instance.</typeparam>
+        /// <typeparam name="TService">The service type.</typeparam>
+        public static void Scoped<TService, TInstance>(Func<TInstance> create)
+            where TInstance : TService
+        {
+            lock (typeof(Service<TService>))
+            {
+                RequiresEmptyRegistration<TService>();
+                var i = Interlocked.Increment(ref instances);
+                Service<TService>.Resolve =
+                    deps => (TService)(deps.scoped[i] ?? deps.Init(create(), i));
             }
         }
 
         /// <summary>
         /// Declare a global instance.
         /// </summary>
-        /// <typeparam name="TService">The type of the service.</typeparam>
-        /// <param name="instance"></param>
+        /// <typeparam name="TService">The service type.</typeparam>
+        /// <param name="instance">The global instance.</param>
         public static void Singleton<TService>(TService instance)
         {
             lock (typeof(Service<TService>))
@@ -56,22 +74,38 @@ namespace Injector
         /// <summary>
         /// Define a transient 
         /// </summary>
-        /// <typeparam name="TInstance"></typeparam>
-        /// <typeparam name="TService"></typeparam>
+        /// <typeparam name="TInstance">The type of the service instance.</typeparam>
+        /// <typeparam name="TService">The service type.</typeparam>
         public static void Transient<TService, TInstance>()
             where TInstance : TService, new()
         {
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
-                Service<TService>.Resolve = deps => deps.Fresh<TInstance>();
+                Service<TService>.Resolve = deps => deps.Init(new TInstance());
+            }
+        }
+
+        /// <summary>
+        /// Define a transient 
+        /// </summary>
+        /// <param name="create">The default constructor to use.</param>
+        /// <typeparam name="TInstance">The type of the service instance.</typeparam>
+        /// <typeparam name="TService">The service type.</typeparam>
+        public static void Transient<TService, TInstance>(Func<TInstance> create)
+            where TInstance : TService
+        {
+            lock (typeof(Service<TService>))
+            {
+                RequiresEmptyRegistration<TService>();
+                Service<TService>.Resolve = deps => deps.Init(create());
             }
         }
 
         /// <summary>
         /// Clear any previous registrations.
         /// </summary>
-        /// <typeparam name="TService"></typeparam>
+        /// <typeparam name="TService">The service type.</typeparam>
         public static void Clear<TService>()
         {
             Service<TService>.Resolve = null;
@@ -82,13 +116,18 @@ namespace Injector
         /// <summary>
         /// Create a fresh instance of a type.
         /// </summary>
-        T Fresh<T>(int scopeIndex = -1)
-            where T : new()
+        T Init<T>(T x, int scopeIndex)
         {
-            var x = new T();
             // register scoped instance before init in case of circular dependencies
             if (scopeIndex >= 0)
                 scoped[scopeIndex] = x;
+            return Init(x);
+        }
+        /// <summary>
+        /// Create a fresh instance of a type.
+        /// </summary>
+        T Init<T>(T x)
+        {
             Instance<T>.Init(this, x);
             if (x is IDisposable)
                 disposables.Add(x as IDisposable);
