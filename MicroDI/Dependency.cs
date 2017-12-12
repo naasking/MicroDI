@@ -42,7 +42,7 @@ namespace MicroDI
         /// <summary>
         /// Define a scoped service registration.
         /// </summary>
-        /// <param name="create">The default constructor to use.</param>
+        /// <param name="create">The custom constructor to create new instances.</param>
         /// <typeparam name="TInstance">The type of the service instance.</typeparam>
         /// <typeparam name="TService">The service type.</typeparam>
         public static void Scoped<TService, TInstance>(Func<TInstance> create)
@@ -89,7 +89,7 @@ namespace MicroDI
         /// <summary>
         /// Define a transient 
         /// </summary>
-        /// <param name="create">The default constructor to use.</param>
+        /// <param name="create">The custom constructor to create new instances.</param>
         /// <typeparam name="TInstance">The type of the service instance.</typeparam>
         /// <typeparam name="TService">The service type.</typeparam>
         public static void Transient<TService, TInstance>(Func<TInstance> create)
