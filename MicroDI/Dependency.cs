@@ -180,6 +180,19 @@ namespace MicroDI
         }
         #endregion
 
+        /// <summary>
+        /// Resolve a service instance.
+        /// </summary>
+        /// <typeparam name="TService">The service type to resolve.</typeparam>
+        /// <returns>An instance of the service.</returns>
+        public TService Resolve<TService>()
+        {
+            var resolve = Service<TService>.Resolve;
+            if (resolve == null)
+                throw new InvalidOperationException("Type " + typeof(TService).Name + " has no registration.");
+            return resolve(this);
+        }
+
 #if DEBUG
         /// <summary>
         /// Resolve a service instance.
@@ -189,7 +202,7 @@ namespace MicroDI
         public TService Scoped<TService>(TService instance)
         {
             //FIXME: manually inject a scoped instance?
-            if (scoped[Service<TService>.Index] != null && (TService)scoped[Service<TService>.Index] != instance)
+            if (scoped[Service<TService>.Index] != null && scoped[Service<TService>.Index] != (object)instance)
                 throw new ArgumentException("An instance is already registered.");
             scoped[Service<TService>.Index] = instance;
             return instance;
