@@ -33,7 +33,7 @@ namespace MicroDI
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
-                var i = Interlocked.Increment(ref instances);
+                var i = Interlocked.Increment(ref instances) - 1;
                 Service<TService>.Resolve =
                     deps => (TService)(deps.scoped[i] ?? deps.Init(new TInstance(), i));
             }
