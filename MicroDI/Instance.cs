@@ -26,11 +26,14 @@ namespace MicroDI
             var dispatch = new List<Action<Dependency, T>>();
             foreach (var x in type.GetRuntimeProperties())
             {
-                init[1] = x.PropertyType;
-                args[0] = x.SetMethod.CreateDelegate(typeof(Action<,>).MakeGenericType(init));
-                dispatch.Add((Action<Dependency, T>)
-                    mkSetter.MakeGenericMethod(x.PropertyType)
-                            .Invoke(null, args));
+                if (x.SetMethod != null)
+                {
+                    init[1] = x.PropertyType;
+                    args[0] = x.SetMethod.CreateDelegate(typeof(Action<,>).MakeGenericType(init));
+                    dispatch.Add((Action<Dependency, T>)
+                        mkSetter.MakeGenericMethod(x.PropertyType)
+                                .Invoke(null, args));
+                }
             }
             Init = (Action<Dependency, T>)Delegate.Combine(dispatch.ToArray());
         }
