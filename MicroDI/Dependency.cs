@@ -213,7 +213,6 @@ namespace MicroDI
             scoped[Service<TService>.Index] = instance;
             return instance;
         }
-#endif
 
         /// <summary>
         /// Resolve a service instance.
@@ -225,6 +224,7 @@ namespace MicroDI
         {
             return Init(new TService());
         }
+#endif
 
         /// <summary>
         /// Dispose of this dependency manager and any <seealso cref="IDisposable"/> instances it created.
