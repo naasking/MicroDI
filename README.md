@@ -68,14 +68,25 @@ extensible. Typical DI frameworks perform plenty of runtime code
 generation in order to efficiently call a type's constructor.
 This is unfortunately necessary given the design of .NET.
 
-I decided on property-based DI, and so MicroDI requires
+Therefore I decided on property-based DI. MicroDI thus requires
 no runtime code generation and consists of only 3 simple classes
 with around 250 lines of heavily commented code that you can
 understand in minutes.
 
-MicroDI is also extremely efficient because of the way it exploits
-the CLR's generics to cache precomputed delegates for constructing
-and initializing types.
+MicroDI is also quite efficient despite the lack of code generation
+because of the way it exploits the CLR's generics to cache precomputed
+delegates for constructing and initializing types (forked from the
+IoCPerformance repo):
+
+|Container|Version|Singleton|Transient|Property|Prepare And Register|Prepare And Register And Simple Resolve|
+|---------|-------|---------|---------|--------|--------------------|---------------------------------------|
+|No|133|158|211|4|5|
+|DryIoc|2.11.5|98|117|170|115|415|
+|LightInject|5.0.3|85|110|173|219|1095|
+|MicroDI|1.0.0-RC1|48|125|954|202|252|
+
+MicroDI's property slowdown is because it doesn't used code
+generation.
 
 The limited feature set may or may not be suitable for your
 application. Fortunately, MicroDI is so simple you can probably

@@ -85,11 +85,10 @@ namespace MicroDI.Tests
             Dependency.Clear<IService2>();
         }
 
-        //FIXME: this fails because a transient Instance1 recursively references
-        //itself, causing recursive initialization until stack overflow.
         [TestMethod]
         public void TestInvalidTransientCircular()
         {
+            // ensure circular dependencies for transients fail
             try
             {
                 Dependency.Transient<IService1, Instance1>(true);
@@ -98,6 +97,12 @@ namespace MicroDI.Tests
             catch (ArgumentException)
             {
             }
+        }
+        
+        [TestMethod]
+        public void TestInvalidTransient()
+        {
+            Dependency.Transient<ITransient1, Transient1>();
         }
     }
 }

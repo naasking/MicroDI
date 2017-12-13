@@ -26,7 +26,7 @@ namespace MicroDI
             var dispatch = new List<Action<Dependency, T>>();
             foreach (var x in type.GetRuntimeProperties())
             {
-                if (x.SetMethod != null)
+                if (x.SetMethod != null && !x.SetMethod.IsStatic)
                 {
                     init[1] = x.PropertyType;
                     args[0] = x.SetMethod.CreateDelegate(typeof(Action<,>).MakeGenericType(init));
