@@ -48,10 +48,8 @@ namespace MicroDI
         /// Define a scoped service registration.
         /// </summary>
         /// <param name="create">The custom constructor to create new instances.</param>
-        /// <typeparam name="TInstance">The type of the service instance.</typeparam>
         /// <typeparam name="TService">The service type.</typeparam>
-        public static void Scoped<TService, TInstance>(Func<TInstance> create)
-            where TInstance : TService
+        public static void Scoped<TService>(Func<TService> create)
         {
             lock (typeof(Service<TService>))
             {
@@ -144,7 +142,7 @@ namespace MicroDI
         /// </summary>
         T Init<T>(T x)
         {
-            Instance<T>.Init(this, x);
+            Instance<T>.Init?.Invoke(this, x);
             var y = x as IDisposable;
             if (y != null)
                 disposables.Add(y);
