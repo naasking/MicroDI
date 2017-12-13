@@ -34,7 +34,10 @@ namespace MicroDI
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
-                var i = Service<TService>.Index = Service<TInstance>.Index =
+                var i =
+#if DEBUG
+                    Service<TService>.Index = Service<TInstance>.Index =
+#endif
                     Interlocked.Increment(ref instances) - 1;
                 Service<TService>.Resolve =
                     deps => (TService)(deps.scoped[i] ?? deps.Init(new TInstance(), i));
@@ -53,8 +56,11 @@ namespace MicroDI
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
-                var i = Service<TService>.Index = Service<TInstance>.Index =
-                    Interlocked.Increment(ref instances);
+                var i =
+#if DEBUG
+                    Service<TService>.Index = Service<TInstance>.Index =
+#endif
+                    Interlocked.Increment(ref instances) - 1;
                 Service<TService>.Resolve =
                     deps => (TService)(deps.scoped[i] ?? deps.Init(create(), i));
             }
@@ -77,6 +83,7 @@ namespace MicroDI
         /// <summary>
         /// Define a transient 
         /// </summary>
+        /// <param name="debug">A circular dependency check is performed if true, otherwise the check is skipped.</param>
         /// <typeparam name="TInstance">The type of the service instance.</typeparam>
         /// <typeparam name="TService">The service type.</typeparam>
         public static void Transient<TService, TInstance>(bool debug = false)
@@ -96,6 +103,7 @@ namespace MicroDI
         /// Define a transient 
         /// </summary>
         /// <param name="create">The custom constructor to create new instances.</param>
+        /// <param name="debug">A circular dependency check is performed if true, otherwise the check is skipped.</param>
         /// <typeparam name="TInstance">The type of the service instance.</typeparam>
         /// <typeparam name="TService">The service type.</typeparam>
         public static void Transient<TService, TInstance>(Func<TInstance> create, bool debug = false)
