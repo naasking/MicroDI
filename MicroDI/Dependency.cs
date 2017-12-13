@@ -153,8 +153,8 @@ namespace MicroDI
         /// </summary>
         static void RequiresEmptyRegistration<TReturn>()
         {
-            if (Service<TReturn>.Resolve != null)
-                throw new InvalidOperationException("Type " + typeof(TReturn).Name + " is already registered.");
+            //if (Service<TReturn>.Resolve != null)
+            //    throw new InvalidOperationException("Type " + typeof(TReturn).Name + " is already registered.");
         }
 
         static MethodInfo isCircular = new Func<HashSet<Type>, bool>(IsCircular<int, int>)

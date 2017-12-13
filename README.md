@@ -90,6 +90,8 @@ IoCPerformance repo):
 |DryIoc|2.11.5|98|117|170|115|415|
 |LightInject|5.0.3|85|110|173|219|1095|
 |MicroDI|1.0.0-RC1|48|125|954|202|252|
+|Microsoft DependencyInjection|1.1.1|345|354|0|30|47|
+
 
 MicroDI's property slowdown is because it doesn't used code
 generation.
