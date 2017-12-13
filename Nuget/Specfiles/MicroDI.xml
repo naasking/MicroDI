@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>MicroDI</id>
+    <version>$vers$</version>
+    <title>MicroDI</title>
+    <authors>Sandro Magi</authors>
+    <owners>Sandro Magi</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>A tiny property-based dependency injector for .NET.</description>
+    <summary>
+    MicroDI is a lightweight property-based dependency injector for .NET that is fast despite employing no code generation,
+    which makes it suitable for use in more restricted environments.
+    </summary>
+    <copyright>Sandro Magi 2017</copyright>
+    <dependencies>
+    </dependencies>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System" targetFramework="" />
+      <frameworkAssembly assemblyName="System.Core" targetFramework="" />
+      <frameworkAssembly assemblyName="System.Web" targetFramework="" />
+    </frameworkAssemblies>
+  </metadata>
+</package>

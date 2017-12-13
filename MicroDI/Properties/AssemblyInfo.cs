@@ -7,9 +7,9 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("MicroDI")]
-[assembly: AssemblyDescription("A tiny, fast dependency injector.")]
+[assembly: AssemblyDescription("A tiny, fast dependency injector that doesn't employ runtime code generation, making it suitable for use in restricted environments.")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Sandro Magi")]
 [assembly: AssemblyProduct("MicroDI")]
 [assembly: AssemblyCopyright("Copyright © Sandro Magi 2017")]
 [assembly: AssemblyTrademark("")]
@@ -28,3 +28,4 @@ using System.Runtime.InteropServices;
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0")]
 [assembly: AssemblyFileVersion("1.0.0")]
+[assembly: AssemblyInformationalVersion("1.0.0-RC1")]
