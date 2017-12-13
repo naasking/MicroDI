@@ -32,6 +32,12 @@ Then you can create an instance of the dependency manager:
 The dependency manager will dispose of any IDisposable transient
 or scoped instances when it's disposed.
 
+If you're after ultimate performance, you should use the overloads
+that accept a delegate to construct an empty instance, even if your type
+has a parameterless constructor. This is because the CLR's performance
+on calling parameterless constructors of generic type arguments is
+noticeably slower than a delegate invocation.
+
 # Circular Dependencies
 
 MicroDI supports arbitary circular dependencies with one
