@@ -80,7 +80,7 @@ IoCPerformance repo):
 
 |Container|Version|Singleton|Transient|Property|Prepare And Register|Prepare And Register And Simple Resolve|
 |---------|-------|---------|---------|--------|--------------------|---------------------------------------|
-|No|133|158|211|4|5|
+|No|-|133|158|211|4|5|
 |DryIoc|2.11.5|98|117|170|115|415|
 |LightInject|5.0.3|85|110|173|219|1095|
 |MicroDI|1.0.0-RC1|48|125|954|202|252|
