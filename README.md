@@ -9,7 +9,7 @@ where runtime codegen is difficult, expensive or impossible.
 
 The typical lifetimes are supported:
 
-    Dependency.Singleton<IService, ServiceInstance>(instance);
+    Dependency.Singleton<IService>(instance);
     Dependency.Transient<IService, ServiceInstance>();
     Dependency.Scoped<IService, ServiceInstance>();
 
