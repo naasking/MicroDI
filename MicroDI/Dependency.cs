@@ -15,6 +15,11 @@ namespace MicroDI
         List<IDisposable> disposables = new List<IDisposable>();
         object[] scoped = new object[instances];
 
+        /// <summary>
+        /// A flag to control use of code generation.
+        /// </summary>
+        public static bool UseCodeGeneration;
+
         #region Dependency registrations
         internal static int instances = 0;
 
@@ -22,45 +27,25 @@ namespace MicroDI
         /// The event that's fired when errors occur during disposal.
         /// </summary>
         public static event Action<IEnumerable<Exception>> OnError;
-
-        /// <summary>
-        /// Define a scoped service registration.
-        /// </summary>
-        /// <typeparam name="TInstance">The type of the service instance.</typeparam>
-        /// <typeparam name="TService">The service type.</typeparam>
-        public static void Scoped<TService, TInstance>()
-            where TInstance : TService, new()
-        {
-            lock (typeof(Service<TService>))
-            {
-                RequiresEmptyRegistration<TService>();
-                var i =
-#if DEBUG
-                    Service<TService>.Index = Service<TInstance>.Index =
-#endif
-                    Interlocked.Increment(ref instances) - 1;
-                Service<TService>.Resolve =
-                    deps => (TService)(deps.scoped[i] ?? deps.Init(new TInstance(), i));
-            }
-        }
-
+        
         /// <summary>
         /// Define a scoped service registration.
         /// </summary>
         /// <param name="create">The custom constructor to create new instances.</param>
         /// <typeparam name="TService">The service type.</typeparam>
-        public static void Scoped<TService>(Func<TService> create)
+        public static void Scoped<TService, TInstance>(Func<Dependency, TInstance> create)
+            where TInstance : TService
         {
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
                 var i =
 #if DEBUG
-                    Service<TService>.Index = Service<TInstance>.Index =
+                    Service<TService>.Index = //Service<TInstance>.Index =
 #endif
                     Interlocked.Increment(ref instances) - 1;
                 Service<TService>.Resolve =
-                    deps => (TService)(deps.scoped[i] ?? deps.Init(create(), i));
+                    deps => (TService)(deps.scoped[i] ?? deps.Init(create(deps), i));
             }
         }
 
@@ -77,26 +62,7 @@ namespace MicroDI
                 Service<TService>.Resolve = deps => instance;
             }
         }
-
-        /// <summary>
-        /// Define a transient 
-        /// </summary>
-        /// <param name="debug">A circular dependency check is performed if true, otherwise the check is skipped.</param>
-        /// <typeparam name="TInstance">The type of the service instance.</typeparam>
-        /// <typeparam name="TService">The service type.</typeparam>
-        public static void Transient<TService, TInstance>(bool debug = false)
-            where TInstance : TService, new()
-        {
-            lock (typeof(Service<TService>))
-            {
-                RequiresEmptyRegistration<TService>();
-                // check for a circular dependency on TService in TInstance
-                if (debug && IsCircular<TInstance, TService>(new HashSet<Type>(new[] { typeof(TInstance) })))
-                    throw new ArgumentException("Type " + typeof(TInstance).Name + " has a circular dependency on " + typeof(TService).Name + " and so cannot have transient lifetime.");
-                Service<TService>.Resolve = deps => deps.Init(new TInstance());
-            }
-        }
-
+        
         /// <summary>
         /// Define a transient 
         /// </summary>
@@ -104,7 +70,7 @@ namespace MicroDI
         /// <param name="debug">A circular dependency check is performed if true, otherwise the check is skipped.</param>
         /// <typeparam name="TInstance">The type of the service instance.</typeparam>
         /// <typeparam name="TService">The service type.</typeparam>
-        public static void Transient<TService, TInstance>(Func<TInstance> create, bool debug = false)
+        public static void Transient<TService, TInstance>(Func<Dependency, TInstance> create, bool debug = false)
             where TInstance : TService
         {
             lock (typeof(Service<TService>))
@@ -113,7 +79,7 @@ namespace MicroDI
                 // check for a circular dependency on TService in TInstance
                 if (debug && IsCircular<TInstance, TService>(new HashSet<Type>(new[] { typeof(TInstance) })))
                     throw new ArgumentException("Type " + typeof(TInstance).Name + " has a circular dependency on " + typeof(TService).Name + " and so cannot have transient lifetime.");
-                Service<TService>.Resolve = deps => deps.Init(create());
+                Service<TService>.Resolve = deps => deps.Init(create(deps));
             }
         }
 

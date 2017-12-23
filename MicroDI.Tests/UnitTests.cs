@@ -10,8 +10,8 @@ namespace MicroDI.Tests
         [TestMethod]
         public void TestCircularScoped()
         {
-            Dependency.Scoped<IService1, Instance1>();
-            Dependency.Scoped<IService2, Instance2>();
+            Dependency.Scoped<IService1, Instance1>(x => new Instance1());
+            Dependency.Scoped<IService2, Instance2>(x => new Instance2());
             using (var deps = new Dependency())
             {
                 var x = deps.Resolve<IService2>();
@@ -29,8 +29,8 @@ namespace MicroDI.Tests
         [TestMethod]
         public void TestTransient()
         {
-            Dependency.Scoped<IService1, Instance1>();
-            Dependency.Transient<IService2, Instance2>();
+            Dependency.Scoped<IService1, Instance1>(x => new Instance1());
+            Dependency.Transient<IService2, Instance2>(x => new Instance2());
             using (var deps = new Dependency())
             {
                 var x = deps.Resolve<IService2>();
@@ -47,8 +47,8 @@ namespace MicroDI.Tests
         [TestMethod]
         public void TestCircularScoped2()
         {
-            Dependency.Scoped<IService1, Instance1>();
-            Dependency.Scoped<IService2, Instance2>();
+            Dependency.Scoped<IService1, Instance1>(x => new Instance1());
+            Dependency.Scoped<IService2, Instance2>(x => new Instance2());
             using (var deps = new Dependency())
             {
                 var x = deps.Resolve<IService2>();
@@ -68,8 +68,8 @@ namespace MicroDI.Tests
         [TestMethod]
         public void TestTransient2()
         {
-            Dependency.Scoped<IService1, Instance1>();
-            Dependency.Transient<IService2, Instance2>();
+            Dependency.Scoped<IService1, Instance1>(x => new Instance1());
+            Dependency.Transient<IService2, Instance2>(x => new Instance2());
             using (var deps = new Dependency())
             {
                 var y = deps.Resolve<IService1>();
@@ -91,7 +91,7 @@ namespace MicroDI.Tests
             // ensure circular dependencies for transients fail
             try
             {
-                Dependency.Transient<IService1, Instance1>(true);
+                Dependency.Transient<IService1, Instance1>(x => new Instance1(), true);
                 Assert.Fail(nameof(Instance1) + " is circular with " + nameof(IService1));
             }
             catch (ArgumentException)
@@ -102,7 +102,7 @@ namespace MicroDI.Tests
         [TestMethod]
         public void TestInvalidTransient()
         {
-            Dependency.Transient<ITransient1, Transient1>();
+            Dependency.Transient<ITransient1, Transient1>(x => new Transient1());
         }
     }
 }
