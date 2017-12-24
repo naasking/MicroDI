@@ -291,7 +291,7 @@ namespace MicroDI
         {
             switch (map.Length)
             {
-                case 1: return args => new[] { args[map[0]] };
+                case 1: return args => args;
                 case 2: return args => new[] { args[map[0]], args[map[1]] };
                 case 3: return args => new[] { args[map[0]], args[map[1]], args[map[2]] };
                 case 4: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]] };
