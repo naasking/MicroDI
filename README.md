@@ -101,6 +101,10 @@ IoCPerformance repo):
 |MicroDI|1.0.0-RC1|48|125|954|202|252|
 |Microsoft DependencyInjection|1.1.1|345|354|0|30|47|
 
+The lack of code generation clearly hurts MicroDI in the property
+injection case, but this use case should be sufficiently rare
+that it won't impact overall performance.
+
 The limited feature set may or may not be suitable for your
 application. Fortunately, MicroDI is so simple you can probably
 add any missing features.

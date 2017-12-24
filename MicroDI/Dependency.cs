@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace MicroDI
 {
@@ -17,17 +18,19 @@ namespace MicroDI
         
         #region Dependency registrations
         internal static int instances = 0;
+        static List<Action> clearAll = new List<Action>();
 
         /// <summary>
         /// The event that's fired when errors occur during disposal.
         /// </summary>
         public static event Action<IEnumerable<Exception>> OnError;
-        
+
         /// <summary>
         /// Define a scoped service registration.
         /// </summary>
         /// <param name="create">The custom constructor to create new instances.</param>
         /// <typeparam name="TService">The service type.</typeparam>
+        /// <typeparam name="TInstance">The instance type.</typeparam>
         public static void Scoped<TService, TInstance>(Func<Dependency, TInstance> create)
             where TInstance : TService
         {
@@ -38,6 +41,8 @@ namespace MicroDI
                 var i = Interlocked.Increment(ref instances) - 1;
                 Service<TService>.Resolve =
                     deps => (TService)(deps.scoped[i] ?? deps.Init(create(deps), i));
+                lock (clearAll)
+                    clearAll.Add(() => Service<TService>.Resolve = null);
             }
         }
 
@@ -52,6 +57,8 @@ namespace MicroDI
             {
                 RequiresEmptyRegistration<TService>();
                 Service<TService>.Resolve = deps => instance;
+                lock (clearAll)
+                    clearAll.Add(() => Service<TService>.Resolve = null);
             }
         }
         
@@ -72,6 +79,8 @@ namespace MicroDI
                 if (debug && IsCircular<TInstance, TService>(new HashSet<Type>(new[] { typeof(TInstance) })))
                     throw new ArgumentException("Type " + typeof(TInstance).Name + " has a circular dependency on " + typeof(TService).Name + " and so cannot have transient lifetime.");
                 Service<TService>.Resolve = deps => deps.Init(create(deps));
+                lock (clearAll)
+                    clearAll.Add(() => Service<TService>.Resolve = null);
             }
         }
 
@@ -82,6 +91,16 @@ namespace MicroDI
         public static void Clear<TService>()
         {
             Service<TService>.Resolve = null;
+        }
+
+        /// <summary>
+        /// Clear any previous registrations.
+        /// </summary>
+        public static void ClearAll()
+        {
+            lock (clearAll)
+                foreach (var x in clearAll)
+                    x();
         }
         #endregion
 
@@ -149,6 +168,7 @@ namespace MicroDI
         /// </summary>
         /// <typeparam name="TService">The service type to resolve.</typeparam>
         /// <returns>An instance of the service.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TService Resolve<TService>()
         {
             var resolve = Service<TService>.Resolve;
