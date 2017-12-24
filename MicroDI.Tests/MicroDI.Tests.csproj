@@ -60,6 +60,7 @@
     <Compile Include="Instance2.cs" />
     <Compile Include="IService1.cs" />
     <Compile Include="IService2.cs" />
+    <Compile Include="TestGenerics.cs" />
     <Compile Include="TestTransients.cs" />
     <Compile Include="UnitTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

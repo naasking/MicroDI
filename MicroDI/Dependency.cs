@@ -15,10 +15,12 @@ namespace MicroDI
         List<IDisposable> disposables = new List<IDisposable>();
         object[] scoped = new object[instances];
 
+#if DEBUG
         /// <summary>
         /// A flag to control use of code generation.
         /// </summary>
         public static bool UseCodeGeneration;
+#endif
 
         #region Dependency registrations
         internal static int instances = 0;
@@ -36,6 +38,8 @@ namespace MicroDI
         public static void Scoped<TService, TInstance>(Func<Dependency, TInstance> create)
             where TInstance : TService
         {
+            //FIXME: I could add a circularity check here too now that this supports arbitrary constructors.
+            //This could be detected at runtime via a test construction of all instances.
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
@@ -90,6 +94,17 @@ namespace MicroDI
         public static void Clear<TService>()
         {
             Service<TService>.Resolve = null;
+        }
+
+        /// <summary>
+        /// Clear any previous registrations.
+        /// </summary>
+        /// <typeparam name="TService">The service type.</typeparam>
+        public static void Clear(Type typeDefinition)
+        {
+            if (typeDefinition.IsConstructedGenericType || !typeDefinition.GetTypeInfo().IsGenericTypeDefinition)
+                throw new ArgumentException("Parameter must be a generic type definition.");
+            ctors.Remove(typeDefinition);
         }
         #endregion
 
@@ -150,6 +165,73 @@ namespace MicroDI
         }
         #endregion
 
+        #region Generic constructor overloads
+        struct TypeApply
+        {
+            public Type Definition;
+            public short CtorIndex;
+            public short[] TypeArgs;
+        }
+        static ConstructorInfo Apply(TypeInfo definition, Type instance, int ctorIndex)
+        {
+            return definition.MakeGenericType(instance.GenericTypeArguments)
+                             .GetTypeInfo()
+                             .DeclaredConstructors
+                             .ElementAt(ctorIndex);
+        }
+        static Func<Dependency, T> Const<T>(T value)
+        {
+            return x => value;
+        }
+        static Func<Dependency, T> New<T, T0>(ConstructorInfo ctor, Func<Dependency, T0> arg0)
+        {
+            return x => (T)ctor.Invoke(new object[] { arg0(x) });
+        }
+        static Func<Dependency, T> New<T, T0, T1>(ConstructorInfo ctor, Func<Dependency, T0> arg0, Func<Dependency, T1> arg1)
+        {
+            return x => (T)ctor.Invoke(new object[] { arg0(x), arg1(x) });
+        }
+        static Func<Dependency, T> New<T, T0, T1, T2>(ConstructorInfo ctor, Func<Dependency, T0> arg0, Func<Dependency, T1> arg1, Func<Dependency, T2> arg2)
+        {
+            return x => (T)ctor.Invoke(new object[] { arg0(x), arg1(x), arg2(x) });
+        }
+        static Func<Dependency, T> New<T, T0, T1, T2, T3>(ConstructorInfo ctor, Func<Dependency, T0> arg0, Func<Dependency, T1> arg1, Func<Dependency, T2> arg2, Func<Dependency, T3> arg3)
+        {
+            return x => (T)ctor.Invoke(new object[] { arg0(x), arg1(x), arg2(x), arg3(x) });
+        }
+
+        static Func<Type, Dependency, object> GenericCtor(TypeInfo definition, int ctorIndex)
+        {
+            return (type, deps) => Apply(definition, type, ctorIndex).Invoke(null);
+        }
+        static Func<Type, Dependency, object> GenericCtor<T0>(TypeInfo definition, int ctorIndex, Func<Dependency, T0> arg0)
+        {
+            return (type, deps) => Apply(definition, type, ctorIndex).Invoke(new object[] { arg0(deps) });
+        }
+        static Func<Type, Dependency, object> GenericCtor<T0, T1>(TypeInfo definition, int ctorIndex, Func<Dependency, T0> arg0, Func<Dependency, T1> arg1)
+        {
+            return (type, deps) => Apply(definition, type, ctorIndex).Invoke(new object[] { arg0(deps), arg1(deps) });
+        }
+        static Func<Type, Dependency, object> GenericCtor<T0, T1, T2>(TypeInfo definition, int ctorIndex, Func<Dependency, T0> arg0, Func<Dependency, T1> arg1, Func<Dependency, T2> arg2)
+        {
+            return (type, deps) => Apply(definition, type, ctorIndex).Invoke(new object[] { arg0(deps), arg1(deps), arg2(deps) });
+        }
+        static Func<Type, Dependency, object> GenericCtor<T0, T1, T2, T3>(TypeInfo definition, int ctorIndex, Func<Dependency, T0> arg0, Func<Dependency, T1> arg1, Func<Dependency, T2> arg2, Func<Dependency, T3> arg3)
+        {
+            return (type, deps) => Apply(definition, type, ctorIndex).Invoke(new object[] { arg0(deps), arg1(deps), arg2(deps), arg3(deps) });
+        }
+        static Func<Type, Dependency, object> GenericCtor<T0, T1, T2, T3, T4>(TypeInfo definition, int ctorIndex, Func<Dependency, T0> arg0, Func<Dependency, T1> arg1, Func<Dependency, T2> arg2, Func<Dependency, T3> arg3, Func<Dependency, T4> arg4)
+        {
+            return (type, deps) => Apply(definition, type, ctorIndex).Invoke(new object[] { arg0(deps), arg1(deps), arg2(deps), arg3(deps), arg4(deps) });
+        }
+        static Func<Type, Dependency, object> GenericCtor<T0, T1, T2, T3, T4, T5>(TypeInfo definition, int ctorIndex, Func<Dependency, T0> arg0, Func<Dependency, T1> arg1, Func<Dependency, T2> arg2, Func<Dependency, T3> arg3, Func<Dependency, T4> arg4, Func<Dependency, T5> arg5)
+        {
+            return (type, deps) => Apply(definition, type, ctorIndex).Invoke(new object[] { arg0(deps), arg1(deps), arg2(deps), arg3(deps), arg4(deps), arg5(deps) });
+        }
+        #endregion
+
+        static Dictionary<Type, Func<Type, Dependency, object>> ctors = new Dictionary<Type, Func<Type, Dependency, object>>();
+
         /// <summary>
         /// Resolve a service instance.
         /// </summary>
@@ -158,9 +240,67 @@ namespace MicroDI
         public TService Resolve<TService>()
         {
             var resolve = Service<TService>.Resolve;
-            if (resolve == null)
+            if (resolve != null)
+                return resolve(this);
+#if DEBUG
+            var service = typeof(TService);
+            Func<Type, Dependency, object> create;
+            if (service.IsConstructedGenericType && ctors.TryGetValue(service.GetGenericTypeDefinition(), out create))
+                return (TService)create(service, this);
+#endif
+            else
                 throw new InvalidOperationException("Type " + typeof(TService).Name + " has no registration.");
-            return resolve(this);
+        }
+
+        public static void GenericScoped<TService, TInstance>(System.Linq.Expressions.Expression<Func<Dependency, TInstance>> create)
+            where TInstance : TService
+        {
+
+        }
+
+        static readonly MethodInfo resolve = typeof(Dependency).GetRuntimeMethod("Resolve", new Type[0]);
+
+        public static void Scoped(Type service, Type instance)
+        {
+            if (!service.GetTypeInfo().IsGenericTypeDefinition || !instance.GetTypeInfo().IsGenericTypeDefinition)
+                throw new ArgumentException("This overload can only be used to register services with generic type parameters.");
+            var ctorIndex = instance.GetTypeInfo()
+                                    .DeclaredConstructors
+                                    .Select((x, i) => new { i = i, ctor = x })
+                                    .OrderByDescending(x => x.ctor.GetParameters().Length)
+                                    .First()
+                                    .i;
+            var impl = instance.GetTypeInfo().ImplementedInterfaces.Single(x => service == x.GetGenericTypeDefinition());
+            var map = Map(impl.GenericTypeArguments.Select(x => x.GenericParameterPosition).ToArray());
+            ctors.Add(service, (type, deps) =>
+            {
+                var typeArgs = type.GenericTypeArguments;
+                var ctor = instance.MakeGenericType(map?.Invoke(typeArgs))
+                                   .GetTypeInfo()
+                                   .DeclaredConstructors
+                                   .ElementAt(ctorIndex);
+                var param = ctor.GetParameters();
+                var args = new object[param.Length];
+                for (int i = 0; i < args.Length; ++i)
+                    args[i] = resolve.MakeGenericMethod(param[i].ParameterType).Invoke(deps, null);
+                return ctor.Invoke(args);
+            });
+        }
+
+        static Func<Type[], Type[]> Map(int[] map)
+        {
+            switch (map.Length)
+            {
+                case 0: return null;
+                case 1: return args => new[] { args[map[0]] };
+                case 2: return args => new[] { args[map[0]], args[map[1]] };
+                case 3: return args => new[] { args[map[0]], args[map[1]], args[map[2]] };
+                case 4: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]] };
+                case 5: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]], args[map[4]] };
+                case 6: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]], args[map[4]], args[map[5]] };
+                default:
+                    throw new NotSupportedException("Type mapping with " + map.Length + " type parameters is not supported.");
+            }
         }
 
 #if DEBUG
@@ -176,17 +316,6 @@ namespace MicroDI
                 throw new ArgumentException("An instance is already registered.");
             scoped[Service<TService>.Index] = instance;
             return instance;
-        }
-
-        /// <summary>
-        /// Resolve a service instance.
-        /// </summary>
-        /// <typeparam name="TService">The service type to resolve.</typeparam>
-        /// <returns>An instance of the service.</returns>
-        public TService Scoped<TService>()
-            where TService:new()
-        {
-            return Init(new TService());
         }
 #endif
 

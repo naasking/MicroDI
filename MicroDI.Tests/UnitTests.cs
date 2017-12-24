@@ -104,5 +104,24 @@ namespace MicroDI.Tests
         {
             Dependency.Transient<ITransient1, Transient1>(x => new Transient1());
         }
+
+        [TestMethod]
+        public void TestGeneric1()
+        {
+            Dependency.Scoped(typeof(ITestGeneric<,>), typeof(TestGeneric<,>));
+            Dependency.Scoped<IService1, Instance1>(x => new Instance1());
+            using (var deps = new Dependency())
+            {
+                var y = deps.Resolve<ITestGeneric<int, int>>();
+                var x = deps.Resolve<ITestGeneric<string, int>>();
+                Assert.IsNotNull(x);
+                Assert.IsNotNull(x.Service);
+                Assert.IsNotNull(y);
+                Assert.IsNotNull(y.Service);
+                Assert.AreEqual(x.Service, y.Service);
+            }
+            Dependency.Clear(typeof(ITestGeneric<,>));
+            Dependency.Clear<IService1>();
+        }
     }
 }
