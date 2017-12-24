@@ -15,15 +15,19 @@ other containers in favour of a simpler design with no surprises.
 The typical lifetimes are supported:
 
     Dependency.Singleton<IService>(instance);
-    Dependency.Transient<IService, ServiceInstance>();
-    Dependency.Scoped<IService, ServiceInstance>();
+    Dependency.Transient<IService, ServiceInstance>(
+		(Dependency deps) => new ServiceInstance());
+    Dependency.Scoped<IService, ServiceInstance>(
+		(Dependency deps) => new ServiceInstance());
 
 The transient and scoped calls require that ServiceInstance have
 a parameterless constructor. You can optionally also provide a
 constructor delegate if this isn't possible:
 
-    Dependency.Transient<IService, ServiceInstance>(() => new ServiceInstance(...));
-    Dependency.Scoped<IService, ServiceInstance>(() => new ServiceInstance(...));
+    Dependency.Transient<IService, ServiceInstance>(
+		(Dependency deps) => new ServiceInstance(...));
+    Dependency.Scoped<IService, ServiceInstance>(
+		(Dependency deps) => new ServiceInstance(...));
 
 Then you can create an instance of the dependency manager:
 
@@ -34,14 +38,8 @@ Then you can create an instance of the dependency manager:
 		...
 	}
 
-The dependency manager will dispose of any IDisposable transient
-or scoped instances when it's disposed.
-
-If you're after ultimate performance then you should use the overloads
-that accept a delegate to construct an empty instance, even if your type
-has a parameterless constructor. This is because the CLR's performance
-on calling parameterless constructors of generic type arguments is
-noticeably slower than a delegate invocation.
+The dependency manager will dispose of any IDisposable instances
+it creates.
 
 # Circular Dependencies
 
@@ -51,10 +49,11 @@ the service it satisfies. Consider:
 
     public class Foo : IService
 	{
+		[InjectDependency]
 		public IService Service { get; private set; }
 	}
 	...
-	Dependency.Transient<IService, Foo>();
+	Dependency.Transient<IService, Foo>((Dependency deps) => new Foo());
 
 When resolving IService, MicroDI creates an instance of Foo
 and tries to initialize it. While initializing the Foo.Service
@@ -68,7 +67,12 @@ dependency check at registration time:
 
     // throws ArgumentException if ServiceInstance transitively
 	// depends on IService
-    Dependency.Transient<IService, ServiceInstance>(debug:true);
+    Dependency.Transient<IService, ServiceInstance>(
+		(Dependency deps) => new ServiceInstance(...),
+		debug:true);
+
+Note: it's also possible to enter an infinite loop with circular
+constructor dependencies as well.
 
 # Why?
 
@@ -96,10 +100,6 @@ IoCPerformance repo):
 |LightInject|5.0.3|85|110|173|219|1095|
 |MicroDI|1.0.0-RC1|48|125|954|202|252|
 |Microsoft DependencyInjection|1.1.1|345|354|0|30|47|
-
-
-MicroDI's property slowdown is because it doesn't used code
-generation.
 
 The limited feature set may or may not be suitable for your
 application. Fortunately, MicroDI is so simple you can probably

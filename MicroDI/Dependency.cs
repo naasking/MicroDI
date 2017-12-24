@@ -31,6 +31,7 @@ namespace MicroDI
         public static void Scoped<TService, TInstance>(Func<Dependency, TInstance> create)
             where TInstance : TService
         {
+            //FIXME: add a circular dependency check on constructor parameters, similar to transient property check
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
