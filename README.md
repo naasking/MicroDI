@@ -1,9 +1,14 @@
 # MicroDI
 
-This is a tiny but very efficient property-based dependency injector
-for .NET standard 1.0 and up. It has no dependencies and performs
-no runtime code generation, thus making it suitable for environments
-where runtime codegen is difficult, expensive or impossible.
+This is a tiny dependency injector for .NET standard 1.0 and up.
+It has no dependencies and performs no runtime code generation,
+thus making it suitable for environments where runtime codegen is
+difficult, expensive or impossible.
+
+Despite this, it's design is quite efficient, matching that of
+top of the line containers like DryIoc and  and LightInject for
+common use cases. It eschews most of the magic exploited by
+other containers in favour of a simpler design with no surprises.
 
 # Usage
 
