@@ -298,6 +298,8 @@ namespace MicroDI
                 case 4: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]] };
                 case 5: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]], args[map[4]] };
                 case 6: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]], args[map[4]], args[map[5]] };
+                case 7: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]], args[map[4]], args[map[5]], args[map[6]] };
+                case 8: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]], args[map[4]], args[map[5]], args[map[6]], args[map[7]] };
                 default:
                     throw new NotSupportedException("Type mapping with " + map.Length + " type parameters is not supported.");
             }
