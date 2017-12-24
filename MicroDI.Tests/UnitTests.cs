@@ -11,8 +11,9 @@ namespace MicroDI.Tests
         public void TestCircularScoped()
         {
             Dependency.Scoped<IService1, Instance1>(x => new Instance1());
-            Dependency.Scoped<IService2, Instance2>(x => new Instance2());
-            using (var deps = new Dependency())
+            Dependency.Scoped<IService2, Instance2>(x => new Instance2(x.Resolve<IService1>()));
+            var deps = new Dependency();
+            try
             {
                 var x = deps.Resolve<IService2>();
                 Assert.IsNotNull(x);
@@ -22,16 +23,20 @@ namespace MicroDI.Tests
                 Assert.AreEqual(x, x.Service.Service2);
                 Assert.AreEqual(x.Service, x.Service.Self);
             }
-            Dependency.Clear<IService1>();
-            Dependency.Clear<IService2>();
+            finally
+            {
+                Dependency.Clear<IService1>();
+                Dependency.Clear<IService2>();
+            }
         }
 
         [TestMethod]
         public void TestTransient()
         {
             Dependency.Scoped<IService1, Instance1>(x => new Instance1());
-            Dependency.Transient<IService2, Instance2>(x => new Instance2());
-            using (var deps = new Dependency())
+            Dependency.Transient<IService2, Instance2>(x => new Instance2(x.Resolve<IService1>()));
+            var deps = new Dependency();
+            try
             {
                 var x = deps.Resolve<IService2>();
                 Assert.IsNotNull(x);
@@ -41,15 +46,19 @@ namespace MicroDI.Tests
                 Assert.AreNotEqual(x, x.Service.Service2);
                 Assert.AreEqual(x.Service, x.Service.Self);
             }
-            Dependency.Clear<IService1>();
-            Dependency.Clear<IService2>();
+            finally
+            {
+                Dependency.Clear<IService1>();
+                Dependency.Clear<IService2>();
+            }
         }
         [TestMethod]
         public void TestCircularScoped2()
         {
             Dependency.Scoped<IService1, Instance1>(x => new Instance1());
-            Dependency.Scoped<IService2, Instance2>(x => new Instance2());
-            using (var deps = new Dependency())
+            Dependency.Scoped<IService2, Instance2>(x => new Instance2(x.Resolve<IService1>()));
+            var deps = new Dependency();
+            try
             {
                 var x = deps.Resolve<IService2>();
                 var y = deps.Resolve<IService1>();
@@ -61,16 +70,20 @@ namespace MicroDI.Tests
                 Assert.AreEqual(y, x.Service);
                 Assert.AreEqual(x.Service, y.Self);
             }
-            Dependency.Clear<IService1>();
-            Dependency.Clear<IService2>();
+            finally
+            {
+                Dependency.Clear<IService1>();
+                Dependency.Clear<IService2>();
+            }
         }
 
         [TestMethod]
         public void TestTransient2()
         {
             Dependency.Scoped<IService1, Instance1>(x => new Instance1());
-            Dependency.Transient<IService2, Instance2>(x => new Instance2());
-            using (var deps = new Dependency())
+            Dependency.Transient<IService2, Instance2>(x => new Instance2(x.Resolve<IService1>()));
+            var deps = new Dependency();
+            try
             {
                 var y = deps.Resolve<IService1>();
                 var x = deps.Resolve<IService2>();
@@ -81,8 +94,11 @@ namespace MicroDI.Tests
                 Assert.AreNotEqual(x, x.Service.Service2);
                 Assert.AreEqual(x.Service, x.Service.Self);
             }
-            Dependency.Clear<IService1>();
-            Dependency.Clear<IService2>();
+            finally
+            {
+                Dependency.Clear<IService1>();
+                Dependency.Clear<IService2>();
+            }
         }
 
         [TestMethod]
@@ -96,13 +112,23 @@ namespace MicroDI.Tests
             }
             catch (ArgumentException)
             {
+                Dependency.Clear<IService1>();
+                return;
             }
+            Assert.Fail("Expected circular dependency error");
         }
         
         [TestMethod]
         public void TestInvalidTransient()
         {
-            Dependency.Transient<ITransient1, Transient1>(x => new Transient1());
+            try
+            {
+                Dependency.Transient<ITransient1, Transient1>(x => new Transient1());
+            }
+            finally
+            {
+                Dependency.Clear<ITransient1>();
+            }
         }
     }
 }

@@ -14,12 +14,7 @@ namespace MicroDI
     {
         List<IDisposable> disposables = new List<IDisposable>();
         object[] scoped = new object[instances];
-
-        /// <summary>
-        /// A flag to control use of code generation.
-        /// </summary>
-        public static bool UseCodeGeneration;
-
+        
         #region Dependency registrations
         internal static int instances = 0;
 
@@ -39,11 +34,7 @@ namespace MicroDI
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
-                var i =
-#if DEBUG
-                    Service<TService>.Index = //Service<TInstance>.Index =
-#endif
-                    Interlocked.Increment(ref instances) - 1;
+                var i = Interlocked.Increment(ref instances) - 1;
                 Service<TService>.Resolve =
                     deps => (TService)(deps.scoped[i] ?? deps.Init(create(deps), i));
             }
@@ -99,7 +90,9 @@ namespace MicroDI
         /// </summary>
         T Init<T>(T x, int scopeIndex)
         {
-            // register scoped instance before init in case of circular dependencies
+            // check for scoped instance again due possible to circular dependencies
+            if (scoped[scopeIndex] != null)
+                return (T)scoped[scopeIndex];
             scoped[scopeIndex] = x;
             return Init(x);
         }
@@ -134,7 +127,7 @@ namespace MicroDI
         {
             var type = typeof(TInstance);
             var stype = typeof(TService);
-            foreach (var x in type.GetRuntimeProperties())
+            foreach (var x in type.GetRuntimeProperties().Where(x => x.GetCustomAttributes<InjectDependencyAttribute>() != null))
             {
                 if (x.PropertyType == stype || x.PropertyType == type)
                     return true;
@@ -162,34 +155,7 @@ namespace MicroDI
                 throw new InvalidOperationException("Type " + typeof(TService).Name + " has no registration.");
             return resolve(this);
         }
-
-#if DEBUG
-        /// <summary>
-        /// Resolve a service instance.
-        /// </summary>
-        /// <typeparam name="TService">The service type to resolve.</typeparam>
-        /// <returns>An instance of the service.</returns>
-        public TService Scoped<TService>(TService instance)
-        {
-            //FIXME: manually inject a scoped instance?
-            if (scoped[Service<TService>.Index] != null && scoped[Service<TService>.Index] != (object)instance)
-                throw new ArgumentException("An instance is already registered.");
-            scoped[Service<TService>.Index] = instance;
-            return instance;
-        }
-
-        /// <summary>
-        /// Resolve a service instance.
-        /// </summary>
-        /// <typeparam name="TService">The service type to resolve.</typeparam>
-        /// <returns>An instance of the service.</returns>
-        public TService Scoped<TService>()
-            where TService:new()
-        {
-            return Init(new TService());
-        }
-#endif
-
+        
         /// <summary>
         /// Dispose of this dependency manager and any <seealso cref="IDisposable"/> instances it created.
         /// </summary>

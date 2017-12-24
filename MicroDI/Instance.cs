@@ -26,7 +26,7 @@ namespace MicroDI
             var dispatch = new List<Action<Dependency, T>>();
             foreach (var x in type.GetRuntimeProperties())
             {
-                if (x.SetMethod != null && !x.SetMethod.IsStatic)
+                if (x.SetMethod != null && !x.SetMethod.IsStatic && x.GetCustomAttribute<InjectDependencyAttribute>() != null)
                 {
                     init[1] = x.PropertyType;
                     args[0] = x.SetMethod.CreateDelegate(typeof(Action<,>).MakeGenericType(init));
@@ -37,19 +37,10 @@ namespace MicroDI
             }
             Init = (Action<Dependency, T>)Delegate.Combine(dispatch.ToArray());
         }
-
+        
         static Action<Dependency, T> Set<TProperty>(Action<T, TProperty> setter)
         {
-            //FIXME: if no resolver available, should skip initialization or raise error?
-            //return (deps, obj) => setter(obj, deps.Resolve<TProperty>());
-            //return (deps, obj) => setter(obj, Service<TProperty>.Resolve?.Invoke());
-            return (deps, obj) =>
-            {
-                //setter(obj, deps.Resolve<TProperty>();
-                var resolve = Service<TProperty>.Resolve;
-                if (resolve != null)
-                    setter(obj, resolve(deps));
-            };
+            return (deps, obj) => setter(obj, deps.Resolve<TProperty>());
         }
     }
 }
