@@ -7,6 +7,11 @@ namespace MicroDI.Tests
 {
     class Instance2 : IService2
     {
+        public Instance2(IService1 service)
+        {
+            Service = service;
+        }
+
         public IService1 Service { get; private set; }
 
         public int Bar

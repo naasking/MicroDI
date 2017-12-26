@@ -41,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GenericDependency.cs" />
+    <Compile Include="InjectDependencyAttribute.cs" />
     <Compile Include="Instance.cs" />
     <Compile Include="Service.cs" />
     <Compile Include="Dependency.cs" />

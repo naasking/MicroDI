@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace MicroDI
 {
@@ -14,9 +15,10 @@ namespace MicroDI
     {
         List<IDisposable> disposables = new List<IDisposable>();
         object[] scoped = new object[instances];
-
+        
         #region Dependency registrations
         static int instances = 0;
+        static List<Action> clearAll = new List<Action>();
         static Dictionary<Type, DependencyInfo> ctors = new Dictionary<Type, DependencyInfo>();
 
         struct DependencyInfo
@@ -29,12 +31,13 @@ namespace MicroDI
         /// The event that's fired when errors occur during disposal.
         /// </summary>
         public static event Action<IEnumerable<Exception>> OnError;
-        
+
         /// <summary>
         /// Define a scoped service registration.
         /// </summary>
         /// <param name="create">The custom constructor to create new instances.</param>
         /// <typeparam name="TService">The service type.</typeparam>
+        /// <typeparam name="TInstance">The instance type.</typeparam>
         public static void Scoped<TService, TInstance>(Func<Dependency, TInstance> create)
             where TInstance : TService
         {
@@ -43,13 +46,11 @@ namespace MicroDI
             lock (typeof(Service<TService>))
             {
                 RequiresEmptyRegistration<TService>();
-                var i =
-#if DEBUG
-                    Service<TService>.Index = //Service<TInstance>.Index =
-#endif
-                    Interlocked.Increment(ref instances) - 1;
+                var i = Interlocked.Increment(ref instances) - 1;
                 Service<TService>.Resolve =
                     deps => (TService)(deps.scoped[i] ?? deps.Init(create(deps), i));
+                lock (clearAll)
+                    clearAll.Add(() => Service<TService>.Resolve = null);
             }
         }
 
@@ -64,6 +65,8 @@ namespace MicroDI
             {
                 RequiresEmptyRegistration<TService>();
                 Service<TService>.Resolve = deps => instance;
+                lock (clearAll)
+                    clearAll.Add(() => Service<TService>.Resolve = null);
             }
         }
         
@@ -84,6 +87,8 @@ namespace MicroDI
                 if (debug && IsCircular<TInstance, TService>(new HashSet<Type>(new[] { typeof(TInstance) })))
                     throw new ArgumentException("Type " + typeof(TInstance).Name + " has a circular dependency on " + typeof(TService).Name + " and so cannot have transient lifetime.");
                 Service<TService>.Resolve = deps => deps.Init(create(deps));
+                lock (clearAll)
+                    clearAll.Add(() => Service<TService>.Resolve = null);
             }
         }
 
@@ -114,6 +119,16 @@ namespace MicroDI
             //FIXME: clean up cached constructors
             ctors.Remove(typeDefinition);
         }
+
+        /// <summary>
+        /// Clear any previous registrations.
+        /// </summary>
+        public static void ClearAll()
+        {
+            lock (clearAll)
+                foreach (var x in clearAll)
+                    x();
+        }
         #endregion
 
         #region Private methods
@@ -122,7 +137,9 @@ namespace MicroDI
         /// </summary>
         T Init<T>(T x, int scopeIndex)
         {
-            // register scoped instance before init in case of circular dependencies
+            // check for scoped instance again due possible to circular dependencies
+            if (scoped[scopeIndex] != null)
+                return (T)scoped[scopeIndex];
             scoped[scopeIndex] = x;
             return Init(x);
         }
@@ -157,7 +174,7 @@ namespace MicroDI
         {
             var type = typeof(TInstance);
             var stype = typeof(TService);
-            foreach (var x in type.GetRuntimeProperties())
+            foreach (var x in type.GetRuntimeProperties().Where(x => x.GetCustomAttributes<InjectDependencyAttribute>() != null))
             {
                 if (x.PropertyType == stype || x.PropertyType == type)
                     return true;
@@ -178,6 +195,7 @@ namespace MicroDI
         /// </summary>
         /// <typeparam name="TService">The service type to resolve.</typeparam>
         /// <returns>An instance of the service.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TService Resolve<TService>()
         {
             var resolve = Service<TService>.Resolve;
@@ -232,22 +250,6 @@ namespace MicroDI
             }
         }
         
-#if DEBUG
-        /// <summary>
-        /// Resolve a service instance.
-        /// </summary>
-        /// <typeparam name="TService">The service type to resolve.</typeparam>
-        /// <returns>An instance of the service.</returns>
-        public TService Scoped<TService>(TService instance)
-        {
-            //FIXME: manually inject a scoped instance?
-            if (scoped[Service<TService>.Index] != null && scoped[Service<TService>.Index] != (object)instance)
-                throw new ArgumentException("An instance is already registered.");
-            scoped[Service<TService>.Index] = instance;
-            return instance;
-        }
-#endif
-
         /// <summary>
         /// Dispose of this dependency manager and any <seealso cref="IDisposable"/> instances it created.
         /// </summary>
