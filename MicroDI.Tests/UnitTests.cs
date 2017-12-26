@@ -105,10 +105,18 @@ namespace MicroDI.Tests
             Dependency.Transient<ITransient1, Transient1>(x => new Transient1());
         }
 
+        class TestGenericDependency : GenericDependency
+        {
+            public override TService Constructor<TService, T0, T1>(Dependency container)
+            {
+                return (TService)(object)new TestGeneric<T1, T0>(container.Resolve<IService1>());
+            }
+        }
+
         [TestMethod]
         public void TestGeneric1()
         {
-            Dependency.Scoped(typeof(ITestGeneric<,>), typeof(TestGeneric<,>));
+            Dependency.Scoped(typeof(ITestGeneric<,>), new TestGenericDependency());
             Dependency.Scoped<IService1, Instance1>(x => new Instance1());
             using (var deps = new Dependency())
             {

@@ -15,15 +15,15 @@ namespace MicroDI
         List<IDisposable> disposables = new List<IDisposable>();
         object[] scoped = new object[instances];
 
-#if DEBUG
-        /// <summary>
-        /// A flag to control use of code generation.
-        /// </summary>
-        public static bool UseCodeGeneration;
-#endif
-
         #region Dependency registrations
-        internal static int instances = 0;
+        static int instances = 0;
+        static Dictionary<Type, DependencyInfo> ctors = new Dictionary<Type, DependencyInfo>();
+
+        struct DependencyInfo
+        {
+            public bool Scoped;
+            public GenericDependency Dependency;
+        }
 
         /// <summary>
         /// The event that's fired when errors occur during disposal.
@@ -84,6 +84,14 @@ namespace MicroDI
                 if (debug && IsCircular<TInstance, TService>(new HashSet<Type>(new[] { typeof(TInstance) })))
                     throw new ArgumentException("Type " + typeof(TInstance).Name + " has a circular dependency on " + typeof(TService).Name + " and so cannot have transient lifetime.");
                 Service<TService>.Resolve = deps => deps.Init(create(deps));
+            }
+        }
+
+        public static void Scoped(Type service, MicroDI.GenericDependency create)
+        {
+            lock (ctors)
+            {
+                ctors.Add(service, new DependencyInfo { Scoped = true, Dependency = create });
             }
         }
 
@@ -165,8 +173,6 @@ namespace MicroDI
         }
         #endregion
 
-        static Dictionary<Type, Func<Type, Dependency, object>> ctors = new Dictionary<Type, Func<Type, Dependency, object>>();
-
         /// <summary>
         /// Resolve a service instance.
         /// </summary>
@@ -177,68 +183,55 @@ namespace MicroDI
             var resolve = Service<TService>.Resolve;
             if (resolve != null)
                 return resolve(this);
-#if DEBUG
             var service = typeof(TService);
-            Func<Type, Dependency, object> create;
-            if (service.IsConstructedGenericType && ctors.TryGetValue(service.GetGenericTypeDefinition(), out create))
-                return (TService)create(service, this);
-#endif
+            DependencyInfo info;
+            if (service.IsConstructedGenericType && ctors.TryGetValue(service.GetGenericTypeDefinition(), out info))
+            {
+                var targs = service.GenericTypeArguments;
+                var ctor = Map<TService>(service, info.Dependency, ref targs);
+                Service<TService>.Resolve = resolve = (Func<Dependency, TService>)ctor.GetMethodInfo()
+                    .GetGenericMethodDefinition()
+                    .MakeGenericMethod(targs)
+                    .CreateDelegate(typeof(Func<Dependency, TService>), info.Dependency);
+                return resolve(this);
+            }
             else
                 throw new InvalidOperationException("Type " + typeof(TService).Name + " has no registration.");
         }
 
-        public static void GenericScoped<TService, TInstance>(System.Linq.Expressions.Expression<Func<Dependency, TInstance>> create)
-            where TInstance : TService
+        static Func<Dependency, TService> Map<TService>(Type service, GenericDependency info, ref Type[] typeArgs)
         {
-
-        }
-
-        static readonly MethodInfo resolve = typeof(Dependency).GetRuntimeMethod("Resolve", new Type[0]);
-
-        public static void Scoped(Type service, Type instance)
-        {
-            if (!service.GetTypeInfo().IsGenericTypeDefinition || !instance.GetTypeInfo().IsGenericTypeDefinition)
-                throw new ArgumentException("This overload can only be used to register services with generic type parameters.");
-            var ctorIndex = instance.GetTypeInfo()
-                                    .DeclaredConstructors
-                                    .Select((x, i) => new { i = i, ctor = x })
-                                    .OrderByDescending(x => x.ctor.GetParameters().Length)
-                                    .First()
-                                    .i;
-            var impl = instance.GetTypeInfo().ImplementedInterfaces.Single(x => service == x.GetGenericTypeDefinition());
-            var map = Map(impl.GenericTypeArguments.Select(x => x.GenericParameterPosition).ToArray());
-            ctors.Add(service, (type, deps) =>
+            switch (typeArgs.Length)
             {
-                var typeArgs = type.GenericTypeArguments;
-                var ctor = instance.MakeGenericType(map?.Invoke(typeArgs))
-                                   .GetTypeInfo()
-                                   .DeclaredConstructors
-                                   .ElementAt(ctorIndex);
-                var param = ctor.GetParameters();
-                var args = new object[param.Length];
-                for (int i = 0; i < args.Length; ++i)
-                    args[i] = resolve.MakeGenericMethod(param[i].ParameterType).Invoke(deps, null);
-                return ctor.Invoke(args);
-            });
-        }
-
-        static Func<Type[], Type[]> Map(int[] map)
-        {
-            switch (map.Length)
-            {
-                case 1: return args => args;
-                case 2: return args => new[] { args[map[0]], args[map[1]] };
-                case 3: return args => new[] { args[map[0]], args[map[1]], args[map[2]] };
-                case 4: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]] };
-                case 5: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]], args[map[4]] };
-                case 6: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]], args[map[4]], args[map[5]] };
-                case 7: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]], args[map[4]], args[map[5]], args[map[6]] };
-                case 8: return args => new[] { args[map[0]], args[map[1]], args[map[2]], args[map[3]], args[map[4]], args[map[5]], args[map[6]], args[map[7]] };
+                case 1:
+                    typeArgs = new[] { service, typeArgs[0] };
+                    return new Func<Dependency, TService>(info.Constructor<TService, int>);
+                case 2:
+                    typeArgs = new[] { service, typeArgs[0], typeArgs[1] };
+                    return new Func<Dependency, TService>(info.Constructor<TService, int, int>);
+                case 3:
+                    typeArgs = new[] { service, typeArgs[0], typeArgs[1], typeArgs[2] };
+                    return new Func<Dependency, TService>(info.Constructor<TService, int, int, int>);
+                case 4:
+                    typeArgs = new[] { service, typeArgs[0], typeArgs[1], typeArgs[2], typeArgs[3] };
+                    return new Func<Dependency, TService>(info.Constructor<TService, int, int, int, int>);
+                case 5:
+                    typeArgs = new[] { service, typeArgs[0], typeArgs[1], typeArgs[2], typeArgs[3], typeArgs[4] };
+                    return new Func<Dependency, TService>(info.Constructor<TService, int, int, int, int, int>);
+                case 6:
+                    typeArgs = new[] { service, typeArgs[0], typeArgs[1], typeArgs[2], typeArgs[3], typeArgs[4], typeArgs[5] };
+                    return new Func<Dependency, TService>(info.Constructor<TService, int, int, int, int, int, int>);
+                case 7:
+                    typeArgs = new[] { service, typeArgs[0], typeArgs[1], typeArgs[2], typeArgs[3], typeArgs[4], typeArgs[5], typeArgs[6] };
+                    return new Func<Dependency, TService>(info.Constructor<TService, int, int, int, int, int, int, int>);
+                case 8:
+                    typeArgs = new[] { service, typeArgs[0], typeArgs[1], typeArgs[2], typeArgs[3], typeArgs[4], typeArgs[5], typeArgs[6], typeArgs[7] };
+                    return new Func<Dependency, TService>(info.Constructor<TService, int, int, int, int, int, int, int, int>);
                 default:
-                    throw new NotSupportedException("Type mapping with " + map.Length + " type parameters is not supported.");
+                    throw new NotSupportedException("Unrecognized constructor: " + typeArgs.Length + " type parameters.");
             }
         }
-
+        
 #if DEBUG
         /// <summary>
         /// Resolve a service instance.
