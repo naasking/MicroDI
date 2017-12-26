@@ -107,11 +107,11 @@ namespace MicroDI
         /// <summary>
         /// Clear any previous registrations.
         /// </summary>
-        /// <typeparam name="TService">The service type.</typeparam>
         public static void Clear(Type typeDefinition)
         {
             if (typeDefinition.IsConstructedGenericType || !typeDefinition.GetTypeInfo().IsGenericTypeDefinition)
                 throw new ArgumentException("Parameter must be a generic type definition.");
+            //FIXME: clean up cached constructors
             ctors.Remove(typeDefinition);
         }
         #endregion
