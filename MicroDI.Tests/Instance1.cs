@@ -7,10 +7,10 @@ namespace MicroDI.Tests
 {
     class Instance1 : IService1
     {
-        [InjectDependency]
+        [InjectService]
         public IService1 Self { get; protected set; }
 
-        [InjectDependency]
+        [InjectService]
         public IService2 Service2 { get; protected set; }
     }
 }

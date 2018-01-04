@@ -9,7 +9,7 @@ namespace MicroDI
     /// <summary>
     /// Designates a property as requiring dependency resolution.
     /// </summary>
-    public sealed class InjectDependencyAttribute : Attribute
+    public sealed class InjectServiceAttribute : Attribute
     {
     }
 }

@@ -10,10 +10,10 @@ namespace MicroDI.Tests
         [TestMethod]
         public void TestCircularScoped()
         {
-            Dependency.Scoped<IService1, Instance1>(x => new Instance1());
-            Dependency.Scoped<IService2, Instance2>(x => new Instance2(x.Resolve<IService1>()));
-            var deps = new Dependency();
-            try
+            var r = new ServiceRegistry();
+            r.Scoped<IService1, Instance1>(x => new Instance1());
+            r.Scoped<IService2, Instance2>(x => new Instance2(x.Resolve<IService1>()));
+            using (var deps = r.GetLocator())
             {
                 var x = deps.Resolve<IService2>();
                 Assert.IsNotNull(x);
@@ -23,20 +23,15 @@ namespace MicroDI.Tests
                 Assert.AreEqual(x, x.Service.Service2);
                 Assert.AreEqual(x.Service, x.Service.Self);
             }
-            finally
-            {
-                Dependency.Clear<IService1>();
-                Dependency.Clear<IService2>();
-            }
         }
 
         [TestMethod]
         public void TestTransient()
         {
-            Dependency.Scoped<IService1, Instance1>(x => new Instance1());
-            Dependency.Transient<IService2, Instance2>(x => new Instance2(x.Resolve<IService1>()));
-            var deps = new Dependency();
-            try
+            var r = new ServiceRegistry();
+            r.Scoped<IService1, Instance1>(x => new Instance1());
+            r.Transient<IService2, Instance2>(x => new Instance2(x.Resolve<IService1>()));
+            using (var deps = r.GetLocator())
             {
                 var x = deps.Resolve<IService2>();
                 Assert.IsNotNull(x);
@@ -46,19 +41,14 @@ namespace MicroDI.Tests
                 Assert.AreNotEqual(x, x.Service.Service2);
                 Assert.AreEqual(x.Service, x.Service.Self);
             }
-            finally
-            {
-                Dependency.Clear<IService1>();
-                Dependency.Clear<IService2>();
-            }
         }
         [TestMethod]
         public void TestCircularScoped2()
         {
-            Dependency.Scoped<IService1, Instance1>(x => new Instance1());
-            Dependency.Scoped<IService2, Instance2>(x => new Instance2(x.Resolve<IService1>()));
-            var deps = new Dependency();
-            try
+            var r = new ServiceRegistry();
+            r.Scoped<IService1, Instance1>(x => new Instance1());
+            r.Scoped<IService2, Instance2>(x => new Instance2(x.Resolve<IService1>()));
+            using (var deps = r.GetLocator())
             {
                 var x = deps.Resolve<IService2>();
                 var y = deps.Resolve<IService1>();
@@ -70,20 +60,15 @@ namespace MicroDI.Tests
                 Assert.AreEqual(y, x.Service);
                 Assert.AreEqual(x.Service, y.Self);
             }
-            finally
-            {
-                Dependency.Clear<IService1>();
-                Dependency.Clear<IService2>();
-            }
         }
 
         [TestMethod]
         public void TestTransient2()
         {
-            Dependency.Scoped<IService1, Instance1>(x => new Instance1());
-            Dependency.Transient<IService2, Instance2>(x => new Instance2(x.Resolve<IService1>()));
-            var deps = new Dependency();
-            try
+            var r = new ServiceRegistry();
+            r.Scoped<IService1, Instance1>(x => new Instance1());
+            r.Transient<IService2, Instance2>(x => new Instance2(x.Resolve<IService1>()));
+            using (var deps = r.GetLocator())
             {
                 var y = deps.Resolve<IService1>();
                 var x = deps.Resolve<IService2>();
@@ -94,25 +79,20 @@ namespace MicroDI.Tests
                 Assert.AreNotEqual(x, x.Service.Service2);
                 Assert.AreEqual(x.Service, x.Service.Self);
             }
-            finally
-            {
-                Dependency.Clear<IService1>();
-                Dependency.Clear<IService2>();
-            }
         }
 
         [TestMethod]
         public void TestInvalidTransientCircular()
         {
             // ensure circular dependencies for transients fail
+            var r = new ServiceRegistry();
             try
             {
-                Dependency.Transient<IService1, Instance1>(x => new Instance1(), true);
+                r.Transient<IService1, Instance1>(x => new Instance1(), true);
                 Assert.Fail(nameof(Instance1) + " is circular with " + nameof(IService1));
             }
             catch (ArgumentException)
             {
-                Dependency.Clear<IService1>();
                 return;
             }
             Assert.Fail("Expected circular dependency error");
@@ -121,30 +101,26 @@ namespace MicroDI.Tests
         [TestMethod]
         public void TestInvalidTransient()
         {
-            try
-            {
-                Dependency.Transient<ITransient1, Transient1>(x => new Transient1());
-            }
-            finally
-            {
-                Dependency.Clear<ITransient1>();
-            }
+            var r = new ServiceRegistry();
+            r.Transient<ITransient1, Transient1>(x => new Transient1());
         }
 
-        class TestGenericDependency : GenericDependency
+        class TestGenericService : GenericService
         {
-            public override TService Constructor<TService, T0, T1>(Dependency container)
+            public override void Register<T0, T1>(ServiceRegistry registry)
             {
-                return (TService)(object)new TestGeneric<T1, T0>(container.Resolve<IService1>());
+                registry.Scoped<ITestGeneric<T0, T1>, TestGeneric<T1, T0>>(x => new TestGeneric<T1, T0>(x.Resolve<IService1>()));
             }
         }
 
         [TestMethod]
         public void TestGeneric1()
         {
-            Dependency.Scoped(typeof(ITestGeneric<,>), new TestGenericDependency());
-            Dependency.Scoped<IService1, Instance1>(x => new Instance1());
-            using (var deps = new Dependency())
+            var r = new ServiceRegistry();
+            r.Register(typeof(ITestGeneric<,>), new TestGenericService());
+            r.Scoped<IService1, Instance1>(x => new Instance1());
+            r.Scoped<IService2, Instance2>(x => new Instance2(x.Resolve<IService1>()));
+            using (var deps = r.GetLocator())
             {
                 var y = deps.Resolve<ITestGeneric<int, int>>();
                 var x = deps.Resolve<ITestGeneric<string, int>>();
@@ -154,8 +130,6 @@ namespace MicroDI.Tests
                 Assert.IsNotNull(y.Service);
                 Assert.AreEqual(x.Service, y.Service);
             }
-            Dependency.Clear(typeof(ITestGeneric<,>));
-            Dependency.Clear<IService1>();
         }
     }
 }

@@ -40,11 +40,11 @@
     <None Include="project.json" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="GenericDependency.cs" />
-    <Compile Include="InjectDependencyAttribute.cs" />
+    <Compile Include="ServiceRegistry.cs" />
+    <Compile Include="GenericService.cs" />
+    <Compile Include="InjectServiceAttribute.cs" />
     <Compile Include="Instance.cs" />
-    <Compile Include="Service.cs" />
-    <Compile Include="Dependency.cs" />
+    <Compile Include="ServiceLocator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\Portable\$(TargetFrameworkVersion)\Microsoft.Portable.CSharp.targets" />

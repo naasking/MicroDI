@@ -14,31 +14,31 @@ namespace MicroDI
         /// <summary>
         /// Initialize an instance via property setters.
         /// </summary>
-        public static readonly Action<Dependency, T> Init;
+        public static readonly Action<ServiceLocator, T> Init;
         static Instance()
         {
             var type = typeof(T);
-            var mkSetter = new Func<Action<T, int>, Action<Dependency, T>>(Set<int>)
+            var mkSetter = new Func<Action<T, int>, Action<ServiceLocator, T>>(Set<int>)
                 .GetMethodInfo()
                 .GetGenericMethodDefinition();
             var init = new[] { type, type };
             var args = new object[] { null };
-            var dispatch = new List<Action<Dependency, T>>();
+            var dispatch = new List<Action<ServiceLocator, T>>();
             foreach (var x in type.GetRuntimeProperties())
             {
-                if (x.SetMethod != null && !x.SetMethod.IsStatic && x.GetCustomAttribute<InjectDependencyAttribute>() != null)
+                if (x.SetMethod != null && !x.SetMethod.IsStatic && x.GetCustomAttribute<InjectServiceAttribute>() != null)
                 {
                     init[1] = x.PropertyType;
                     args[0] = x.SetMethod.CreateDelegate(typeof(Action<,>).MakeGenericType(init));
-                    dispatch.Add((Action<Dependency, T>)
+                    dispatch.Add((Action<ServiceLocator, T>)
                         mkSetter.MakeGenericMethod(x.PropertyType)
                                 .Invoke(null, args));
                 }
             }
-            Init = (Action<Dependency, T>)Delegate.Combine(dispatch.ToArray());
+            Init = (Action<ServiceLocator, T>)Delegate.Combine(dispatch.ToArray());
         }
         
-        static Action<Dependency, T> Set<TProperty>(Action<T, TProperty> setter)
+        static Action<ServiceLocator, T> Set<TProperty>(Action<T, TProperty> setter)
         {
             return (deps, obj) => setter(obj, deps.Resolve<TProperty>());
         }
