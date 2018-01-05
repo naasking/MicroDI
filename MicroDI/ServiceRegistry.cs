@@ -49,11 +49,11 @@ namespace MicroDI
             //runtime tracing of invocation depth can handle both transient and scoped circularity checks.
             //Can probably do this with a customized ServiceLocator instance.
             var type = typeof(TService);
-            monotypes.Add(type, locator =>
+            monotypes[type] = locator =>
             {
                 object o;
                 return locator.scoped.TryGetValue(type, out o) ? o : locator.Init(create(locator), type);
-            });
+            };
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace MicroDI
         /// <param name="instance">The global instance.</param>
         public void Singleton<TService>(TService instance)
         {
-            monotypes.Add(typeof(TService), locator => instance);
+            monotypes[typeof(TService)] = locator => instance;
         }
 
         /// <summary>
@@ -79,7 +79,7 @@ namespace MicroDI
             // check for a circular dependency on TService in TInstance
             if (debug && IsCircular<TInstance, TService>(new HashSet<Type>(new[] { typeof(TInstance) })))
                 throw new ArgumentException("Type " + typeof(TInstance).Name + " has a circular dependency on " + typeof(TService).Name + " and so cannot have transient lifetime.");
-            monotypes.Add(typeof(TService), locator => locator.Init(create(locator)));
+            monotypes[typeof(TService)] = locator => locator.Init(create(locator));
         }
         #endregion
 
@@ -93,7 +93,7 @@ namespace MicroDI
         {
             if (typeDefinition.IsConstructedGenericType || !typeDefinition.GetTypeInfo().IsGenericTypeDefinition)
                 throw new ArgumentException("Parameter must be a generic type definition.", "typeDefinition");
-            polytypes.Add(typeDefinition, register);
+            polytypes[typeDefinition] = register;
         }
         #endregion
 
